@@ -91,6 +91,7 @@ export default function FlySimulation() {
     if (!ctx) return;
 
     function loop(now: number) {
+      if (!ctx) return;
       rafRef.current = requestAnimationFrame(loop);
       const t = now * 0.001;
 
@@ -170,29 +171,34 @@ export default function FlySimulation() {
   }, []);
 
   // ── vezérlők ───────────────────────────────────────────────────────────────
-  const [pauseStamp, setPauseStamp] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const togglePause = useCallback(() => {
     const sim = clientRef.current;
     if (!sim) return;
-    pausedRef.current = !pausedRef.current;
-    pausedRef.current ? sim.pause() : sim.start();
-    setPauseStamp(n => n + 1);
+    setIsPaused((prev) => {
+      const next = !prev;
+      pausedRef.current = next;
+      if (next) {
+        sim.pause();
+      } else {
+        sim.start();
+      }
+      return next;
+    });
   }, []);
 
   const restart = useCallback(() => {
     clientRef.current?.destroy();
     pausedRef.current  = false;
+    setIsPaused(false);
     frameRef.current   = null;
     ripplesRef.current = [];
     scentRef.current   = [W / 2, H / 2];
     tickRef.current    = 0;
     fpsRef.current     = { fps: 0, lastUpdate: 0, frameCount: 0 };
     clientRef.current  = makeSim(frameRef, tickRef);
-    setPauseStamp(0);
   }, []);
-
-  const isPaused = pausedRef.current;
 
   return (
     <div style={s.page}>

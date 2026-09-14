@@ -1,12 +1,13 @@
-﻿// Egy ágens teljes állapota és fizikája
+// Egy ágens teljes állapota és fizikája
 // Differenciálhajtású 2D model (mint a Braitenberg-jármű)
 
-export const enum AgentSlot {
-  X = 0, Y = 1, Angle = 2,
-  Vl = 3, Vr = 4,
-  Health = 5, Age = 6,
-  _COUNT = 7,
-}
+export const AgentSlot = {
+  X: 0, Y: 1, Angle: 2,
+  Vl: 3, Vr: 4,
+  Health: 5, Age: 6,
+  _COUNT: 7,
+} as const;
+export type AgentSlot = (typeof AgentSlot)[keyof typeof AgentSlot];
 
 const WHEEL_BASE   =  8.0;
 const MAX_SPEED    = 60.0;

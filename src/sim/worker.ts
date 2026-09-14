@@ -1,4 +1,4 @@
-﻿// Web Worker – 60 Hz-es szimuláció motor
+// Web Worker – 60 Hz-es szimuláció motor
 //
 // Üzenet protokoll (főszál → Worker):
 //   { type: 'init', config: SimConfig }
@@ -22,7 +22,7 @@ export interface SimConfig {
   stdpEveryNTicks?: number;
 }
 
-const HEADER    = 1;
+const HEADER    = 2; // [tick, inspectedAgentIdx]
 const PER_AGENT = 3; // x, y, angle
 const TICK_MS   = 1000 / 60;
 
@@ -32,10 +32,11 @@ let cfg: SimConfig;
 let scentSrc: Float32Array;
 let obstacleArr: Float32Array;
 
-let running   = false;
-let lastTime  = 0;
-let tickCount = 0;
-let timerId   = 0;
+let inspectedAgent = -1;
+let running        = false;
+let lastTime       = 0;
+let tickCount      = 0;
+let timerId        = 0;
 
 function step() {
   if (!running || !pool) return;
@@ -72,14 +73,32 @@ function step() {
     pool.tick(a, dt, worldW, worldH);
   }
 
-  const out = new Float32Array(HEADER + agentCount * PER_AGENT);
+  const isInspecting = inspectedAgent >= 0 && inspectedAgent < agentCount;
+  const N = cfg.neuronsPerAgent;
+  const inspectExtra = isInspecting ? (N + N + N * N) : 0;
+  const spatialEnd = HEADER + agentCount * PER_AGENT;
+  const out = new Float32Array(spatialEnd + inspectExtra);
+
   out[0] = tickCount;
+  out[1] = isInspecting ? inspectedAgent : -1;
+
   for (let a = 0; a < agentCount; a++) {
     const b  = a * AgentSlot._COUNT;
     const ob = HEADER + a * PER_AGENT;
     out[ob]     = pool.buf[b + AgentSlot.X];
     out[ob + 1] = pool.buf[b + AgentSlot.Y];
     out[ob + 2] = pool.buf[b + AgentSlot.Angle];
+  }
+
+  if (isInspecting) {
+    const net = nets[inspectedAgent];
+    for (let i = 0; i < N; i++) {
+      out[spatialEnd + i] = net.state[i * 4];
+    }
+    for (let i = 0; i < N; i++) {
+      out[spatialEnd + N + i] = net.spikes[i];
+    }
+    out.set(net.weights, spatialEnd + N * 2);
   }
 
   (self as unknown as Worker).postMessage(out, [out.buffer]);
@@ -121,6 +140,11 @@ self.onmessage = (e: MessageEvent) => {
 
   if (msg.type === 'resume') {
     if (!running) { running = true; lastTime = 0; timerId = self.setTimeout(step, 0) as unknown as number; }
+    return;
+  }
+
+  if (msg.type === 'inspect') {
+    inspectedAgent = typeof msg.agentIdx === 'number' ? msg.agentIdx : -1;
     return;
   }
 

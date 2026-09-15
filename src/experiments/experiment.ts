@@ -65,6 +65,14 @@ export class ExperimentEngine {
     const targetX = scentSources[0][0];
     const targetY = scentSources[0][1];
 
+    // Track start positions for path efficiency metric
+    const startX = new Float32Array(agentCount);
+    const startY = new Float32Array(agentCount);
+    for (let a = 0; a < agentCount; a++) {
+      const b = a * AgentSlot._COUNT;
+      startX[a] = pool.buf[b + AgentSlot.X];
+      startY[a] = pool.buf[b + AgentSlot.Y];
+    }
     const timeToTarget = new Float32Array(agentCount);
     let totalSpikes = 0;
     const startWallTime = performance.now();
@@ -167,8 +175,33 @@ export class ExperimentEngine {
     const successRate = acquiredCount / agentCount;
     const meanTimeToSource = acquiredCount > 0 ? sumTimeToTarget / acquiredCount : 0.0;
     const meanPathLength = sumPathLength / agentCount;
-    const totalNeurons = agentCount * 32;
+    const N = NeuronIndex.TOTAL;
+    const totalNeurons = agentCount * N;
     const meanSpikeRateHz = totalSpikes / (totalNeurons * durationSeconds);
+
+    // Path efficiency: Euclidean start-to-target / path_length for each successful agent
+    let sumEfficiency = 0;
+    let efficiencyCount = 0;
+    let sumFinalDist = 0;
+    for (let a = 0; a < agentCount; a++) {
+      const b = a * AgentSlot._COUNT;
+      const ax = pool.buf[b + AgentSlot.X];
+      const ay = pool.buf[b + AgentSlot.Y];
+      // Final distance to target for all agents
+      const fdx = ax - targetX;
+      const fdy = ay - targetY;
+      sumFinalDist += Math.sqrt(fdx * fdx + fdy * fdy);
+
+      if (pool.targetAcquired[a] && pool.distanceTravelled[a] > 0) {
+        const sdx = startX[a] - targetX;
+        const sdy = startY[a] - targetY;
+        const euclidean = Math.sqrt(sdx * sdx + sdy * sdy);
+        sumEfficiency += euclidean / pool.distanceTravelled[a];
+        efficiencyCount++;
+      }
+    }
+    const pathEfficiency = efficiencyCount > 0 ? sumEfficiency / efficiencyCount : 0.0;
+    const meanFinalDistanceToTarget = sumFinalDist / agentCount;
 
     let sumWeightChange = 0;
     let potentiated = 0;
@@ -201,7 +234,9 @@ export class ExperimentEngine {
       successRate,
       meanTimeToSourceSeconds: meanTimeToSource,
       meanPathLength,
+      pathEfficiency,
       totalCollisions,
+      meanFinalDistanceToTarget,
       meanSpikeRateHz,
       meanWeightChange,
       potentiatedSynapses: potentiated,

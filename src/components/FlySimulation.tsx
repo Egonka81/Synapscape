@@ -18,6 +18,7 @@ const SIM_CONFIG: SimConfig = {
   worldH: H,
   scentSources: [W / 2, H / 2],
   obstacles: [],
+  seed: 42,
 };
 
 interface Ripple {
@@ -453,8 +454,9 @@ export default function FlySimulation() {
         </Card>
         <Card tag="[BRAITENBERG]" title="Braitenberg Chemotaxis Reflex">
           Bilateral antennae project contralateral excitation to differential drive motors: Left Antenna
-          (0..3) &rarr; Right Motor (31), Right Antenna (4..7) &rarr; Left Motor (30). Collision sensor (8)
-          asymmetrically inhibits motors to generate innate obstacle avoidance and food-seeking tropotaxis.
+          (L0..L3) &rarr; Right Motor (31), Right Antenna (R0..R3) &rarr; Left Motor (30). Three directional
+          collision probes (CF=8 Front, CL=9 Left, CR=10 Right) asymmetrically inhibit or accelerate motors
+          to generate innate multi-directional obstacle avoidance.
         </Card>
         <Card tag="[STDP]" title="Synaptic STDP Plasticity">
           Recurrent interneuron weights (9..29) adapt continuously via Spike-Timing-Dependent Plasticity

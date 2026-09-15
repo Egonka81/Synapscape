@@ -27,9 +27,10 @@
 10. [Headless Experiments](#10-headless-experiments)
 11. [Empirical Results & Baseline Comparisons](#11-empirical-results--baseline-comparisons)
 12. [Performance Benchmarks](#12-performance-benchmarks)
-13. [Roadmap](#13-roadmap)
-14. [Development & Commands](#14-development--commands)
-15. [License](#15-license)
+13. [Limitations](#13-limitations)
+14. [Roadmap](#14-roadmap)
+15. [Development & Commands](#15-development--commands)
+16. [License](#16-license)
 
 ---
 
@@ -232,55 +233,74 @@ Results are saved to `experiments_output/results.json` and `experiments_output/r
 
 ## 11. Empirical Results & Baseline Comparisons
 
-Comparative performance across 4 baseline controllers ($N = 40$ agents, duration $20\,\text{s}$, 3 evaluation seeds):
+Comparative performance across 4 baseline controllers ($N = 40$ agents, duration $20\,\text{s}$, **10 evaluation seeds** $\{42, 101, 201, 303, 404, 505, 606, 707, 808, 999\}$, no obstacles).
 
-| Controller Mode | Navigation Mechanism | Mean Path Length (px) | Mean Spikes/s | Mean Synaptic $\Delta w$ | Potentiated / Depressed Synapses |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`BASELINE_RANDOM`** | Uncorrelated Brownian Walk | $367.6\,\text{px}$ | $0.0\,\text{Hz}$ | $0.000$ | $0 / 0$ |
-| **`BASELINE_BRAITENBERG`** | Pure Innate Crossed Tropotaxis | $232.0\,\text{px}$ | $0.0\,\text{Hz}$ | $0.000$ | $0 / 0$ |
-| **`SNN_NO_STDP`** | Fixed Weights (Innate + Random) | $144.8\,\text{px}$ | $2.3\,\text{Hz}$ | $0.000$ | $0 / 0$ |
-| **`SNN_WITH_STDP`** | **Adaptive Spiking STDP** | **$124.5\,\text{px}$** | **$0.7\,\text{Hz}$** | **$-0.023$** | **$+4 / -3910$** |
+> [!NOTE]
+> At 20 s duration and sensor range of 80 px, most agents do not reach the 30 px capture radius of the central plume. **Success rates are low across all conditions** and should be interpreted as order-of-magnitude comparisons rather than convergence guarantees. The path length and synaptic adaptation metrics are the primary differentiators.
 
-### Key Scientific Takeaways
-1. **Energy Efficiency (Spike Sparsity)**: SNN with STDP automatically prunes redundant synaptic pathways via LTD, decreasing firing rate from $2.3\,\text{Hz}$ to $0.7\,\text{Hz}$ while maintaining target orientation.
-2. **Path Optimization**: Active STDP reduces mean path length by $14.0\%$ over fixed SNN and $46.3\%$ over pure Braitenberg steering, producing tighter odor-following trajectories.
+### Per-Condition Aggregate Statistics (mean ± SE, N = 10 seeds)
+
+| Controller Mode | Success Rate | Mean Path (px) | Mean Final Dist (px) | Mean Spikes/s |
+| :--- | :--- | :--- | :--- | :--- |
+| **`BASELINE_RANDOM`** | $0.5\% \pm 0.3\%$ | $367.3 \pm 0.4$ | $293.5 \pm 5.4$ | $0.00 \pm 0.00$ |
+| **`BASELINE_BRAITENBERG`** | $1.0\% \pm 0.8\%$ | $235.2 \pm 1.8$ | $348.3 \pm 2.7$ | $0.00 \pm 0.00$ |
+| **`SNN_NO_STDP`** | $0.3\% \pm 0.2\%$ | $145.1 \pm 5.9$ | $312.3 \pm 5.1$ | $2.49 \pm 0.44$ |
+| **`SNN_WITH_STDP`** | $0.3\% \pm 0.2\%$ | **$121.8 \pm 2.1$** | **$287.9 \pm 6.1$** | **$0.66 \pm 0.12$** |
+
+### Key Observations
+
+1. **Path Compactness**: SNN with STDP produces the shortest mean trajectory ($121.8\,\text{px}$), approximately $16\%$ shorter than SNN without STDP ($145.1\,\text{px}$) and $48\%$ shorter than pure Braitenberg ($235.2\,\text{px}$). This reflects consistent LTD-mediated pruning of synaptic noise that otherwise generates random turning.
+
+2. **Synaptic Sparsification**: STDP reduces mean firing rate from $2.49\,\text{Hz}$ (fixed SNN) to $0.66\,\text{Hz}$ — consistent with LTD dominance observed in the plasticity statistics ($\approx$4,000–6,800 depressed vs. 0–4 potentiated synapses per 20 s run).
+
+3. **Distance to Target**: At end of run, SNN+STDP agents are on average $287.9\,\text{px}$ from the source — closer than fixed-weight SNN ($312.3\,\text{px}$) and substantially closer than pure Braitenberg ($348.3\,\text{px}$). The Braitenberg controller paradoxically ends farther from the target than random walk, likely because its fixed contralateral wiring produces systematic oscillatory trajectories that do not converge at this timescale.
+
+4. **Limitations of Short-Run Evaluation**: The 20 s / $1,200$ tick duration is insufficient for reliable convergence at the given world scale. Longer runs or a smaller world would show clearer differentiation in success rates.
 
 ---
 
 ## 12. Performance Benchmarks
 
-Measured on Node.js / V8 (600 simulation ticks per scale):
-
-```bash
-npm run benchmark
-```
+Measured on Node.js / V8 (fixed ticks per scale, STDP enabled, no obstacles). Run `npm run benchmark` to reproduce:
 
 | Agent Count | Ticks/sec | Avg Tick Duration | Synaptic Operations/sec | Memory Footprint | Real-Time Factor (vs 60 Hz) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1** | $51,124\,\text{ticks/s}$ | $0.020\,\text{ms}$ | $52.3\,\text{M ops/s}$ | $0.01\,\text{MB}$ | **852.1x** |
-| **10** | $12,509\,\text{ticks/s}$ | $0.080\,\text{ms}$ | $128.1\,\text{M ops/s}$ | $0.09\,\text{MB}$ | **208.5x** |
-| **100** | $4,417\,\text{ticks/s}$ | $0.226\,\text{ms}$ | **$452.4\,\text{M ops/s}$** | $0.94\,\text{MB}$ | **73.6x** |
-| **1,000** | $340\,\text{ticks/s}$ | $2.940\,\text{ms}$ | $348.3\,\text{M ops/s}$ | $9.38\,\text{MB}$ | **5.7x** |
-| **5,000** | $50\,\text{ticks/s}$ | $20.095\,\text{ms}$ | $254.8\,\text{M ops/s}$ | $46.88\,\text{MB}$ | **0.8x** |
+| **1** | $\approx 49{,}000$ | $0.020\,\text{ms}$ | $\approx 51\,\text{M ops/s}$ | $0.01\,\text{MB}$ | **$\approx 820\text{x}$** |
+| **10** | $\approx 13{,}700$ | $0.073\,\text{ms}$ | $\approx 140\,\text{M ops/s}$ | $0.09\,\text{MB}$ | **$\approx 228\text{x}$** |
+| **100** | $\approx 4{,}500$ | $0.222\,\text{ms}$ | $\approx 462\,\text{M ops/s}$ | $0.94\,\text{MB}$ | **$\approx 75\text{x}$** |
+| **1,000** | $\approx 390$ | $2.57\,\text{ms}$ | $\approx 399\,\text{M ops/s}$ | $9.38\,\text{MB}$ | **$\approx 6.5\text{x}$** |
+| **5,000** | $\approx 65$ | $15.4\,\text{ms}$ | $\approx 333\,\text{M ops/s}$ | $46.88\,\text{MB}$ | **$\approx 1.1\text{x}$** |
 
 ---
 
-## 13. Roadmap
+## 13. Limitations
+
+- **Simplified odor model**: The `OdorField` uses a static analytically computed Gaussian concentration field. There is no wind advection, time-varying diffusion, turbulence, or multiple-source interaction. This is a deliberate simplification; the model is not a physical plume simulation.
+- **Short evaluation duration**: At $20\,\text{s}$ / $1{,}200$ ticks and a $900 \times 600$ world with a $30\,\text{px}$ capture radius, most trajectories do not converge to the source. Longer runs or a smaller world would reveal clearer success-rate differentiation.
+- **No reward signal**: STDP operates in an unsupervised, purely local Hebbian regime. There is no dopaminergic or environmental feedback. Synaptic changes reflect temporal spike correlations only — not task reward.
+- **Independent-agent assumption**: Each of the 40 agents runs an independent SNN. There is no inter-agent communication beyond the optional shared pheromone diffusion grid.
+- **CPU single-threaded simulation**: Each agent's LIF network is updated sequentially in the Web Worker. WebGPU compute shaders could massively parallelize across agents and synapses.
+
+---
+
+## 14. Roadmap
 
 - [x] Classical Exponential Trace-Based STDP (Bi & Poo 1998).
 - [x] Innate vs. Plastic Synaptic Masking.
 - [x] Deterministic Fixed-Timestep Accumulator Loop.
-- [x] Multi-Directional Collision Probing.
+- [x] Multi-Directional Collision Probing (3-channel: Front, Left, Right).
 - [x] Zero-Allocation Circular Transferable ArrayBuffer Recycling.
 - [x] Headless Automated Experiment Harness and Baseline Suite.
 - [x] Live Spike Raster Plot in Connectome Inspector.
+- [x] Per-condition Aggregate Statistics (mean ± SE, N=10 seeds).
+- [x] Path Efficiency and Final Distance metrics.
 - [ ] Dopaminergic Neuromodulated 3-Factor Reward STDP.
 - [ ] 3D Connectome Graph Visualization via Three.js / WebGL.
 - [ ] WebGPU Compute Pipeline for 100,000+ Agent Swarms.
 
 ---
 
-## 14. Development & Commands
+## 15. Development & Commands
 
 ### Prerequisites
 - Node.js $\ge 20.0.0$
@@ -300,7 +320,7 @@ npm test
 # Run scaling simulation benchmark
 npm run benchmark
 
-# Run headless scientific experiment comparison suite
+# Run headless scientific experiment comparison suite (10 seeds × 4 conditions)
 npm run experiment
 
 # Static code quality analysis (Oxlint)
@@ -312,6 +332,6 @@ npm run build
 
 ---
 
-## 15. License
+## 16. License
 
 MIT License. Copyright (c) 2026 Egon.

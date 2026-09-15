@@ -24,11 +24,13 @@ export interface ExperimentResult {
   simulationWallTimeMs: number;
   ticksPerSecond: number;
   successRate: number;             // Fraction of agents acquiring target [0.0 .. 1.0]
-  meanTimeToSourceSeconds: number; // Mean time to target for successful agents
+  meanTimeToSourceSeconds: number; // Mean time to target for successful agents (0 if none reached)
   meanPathLength: number;          // Average distance travelled (px)
+  pathEfficiency: number;          // Mean (Euclidean start-to-target / path_length) for successful agents; 0 if none
   totalCollisions: number;
+  meanFinalDistanceToTarget: number; // Mean Euclidean distance to odor source at end of run (all agents)
   meanSpikeRateHz: number;
-  meanWeightChange: number;        // Mean delta w (current w - initial w)
+  meanWeightChange: number;        // Mean delta w over plastic synapses (current w - initial w)
   potentiatedSynapses: number;
   depressedSynapses: number;
   timestamp: string;

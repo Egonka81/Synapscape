@@ -11,7 +11,8 @@ export interface LIFParameters {
   tauM: number;     // Membrane time constant (ms) [20.0]
   rM: number;       // Membrane resistance (MΩ) [10.0]
   tRefrac: number;  // Absolute refractory duration (ms) [2.0]
-  iScale: number;   // Scaling factor from input current (nA) to mV [1.0 -> 1 MΩ * 1 nA = 1 mV]
+  iScale: number;   // Dimensionless multiplier on the R_m * I term. With rM=10.0 MΩ and iScale=1.0,
+                    //   effective conversion is 10 mV/nA (e.g., 3 nA injection → 30 mV depolarization).
 }
 
 export const DEFAULT_LIF_PARAMS: LIFParameters = {
@@ -124,6 +125,8 @@ export class LIFNetwork {
     this.reset();
   }
 
+  // Layout: state (n*SLOTS float32) + weights (n*n float32) + initialWeights (n*n float32)
+  //         + plasticityMask (n*n uint8) + spikes (n uint8)
   static bufferSize(n: number): number {
     return n * SLOTS * 4 + n * n * 4 * 2 + n * n + n;
   }

@@ -22,7 +22,9 @@ export class SimulationBenchmark {
     const nets: LIFNetwork[] = [];
 
     const scentSrc = new Float32Array([450, 300]);
-    const obstacleArr = new Float32Array([0, 0, 0]);
+    // Empty obstacle array: no obstacles in benchmark for clean throughput measurement
+    const obstacleArr = new Float32Array(0);
+    const numObs = 0;
 
     for (let a = 0; a < agentCount; a++) {
       const net = new LIFNetwork(32);
@@ -40,7 +42,7 @@ export class SimulationBenchmark {
       for (let a = 0; a < agentCount; a++) {
         const net = nets[a];
         pool.readOlfactorySensors(a, scentSrc, 1);
-        pool.checkCollision(a, obstacleArr, 1);
+        pool.checkCollision(a, obstacleArr, numObs);
 
         const sb = a * SENSOR_CHANNELS;
         for (let s = 0; s < 8; s++) {

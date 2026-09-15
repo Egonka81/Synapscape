@@ -1,0 +1,254 @@
+[
+  {
+    "config": {
+      "seed": 42,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "BASELINE_RANDOM",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 59.60789999999997,
+    "ticksPerSecond": 20131.55974291999,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 365.0088249206543,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.394Z"
+  },
+  {
+    "config": {
+      "seed": 101,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "BASELINE_RANDOM",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 35.16740000000004,
+    "ticksPerSecond": 34122.51118934008,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 370.04236221313477,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.432Z"
+  },
+  {
+    "config": {
+      "seed": 777,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "BASELINE_RANDOM",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 35.76890000000003,
+    "ticksPerSecond": 33548.69733203981,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 367.9159561157227,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.468Z"
+  },
+  {
+    "config": {
+      "seed": 42,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "BASELINE_BRAITENBERG",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 45.64099999999996,
+    "ticksPerSecond": 26292.149602331257,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 236.47107009887696,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.514Z"
+  },
+  {
+    "config": {
+      "seed": 101,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "BASELINE_BRAITENBERG",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 34.44670000000008,
+    "ticksPerSecond": 34836.428453233464,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 229.49162483215332,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.549Z"
+  },
+  {
+    "config": {
+      "seed": 777,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "BASELINE_BRAITENBERG",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 36.225599999999986,
+    "ticksPerSecond": 33125.74532926992,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 230.01579971313475,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.586Z"
+  },
+  {
+    "config": {
+      "seed": 42,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "SNN_NO_STDP",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 147.87339999999995,
+    "ticksPerSecond": 8115.04976554269,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 147.76916732788087,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 2.755390625,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.768Z"
+  },
+  {
+    "config": {
+      "seed": 101,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "SNN_NO_STDP",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 161.3726999999999,
+    "ticksPerSecond": 7436.202034173071,
+    "successRate": 0.025,
+    "meanTimeToSourceSeconds": 0.01666666753590107,
+    "meanPathLength": 137.95154838562013,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 1.6616015625,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:12.966Z"
+  },
+  {
+    "config": {
+      "seed": 777,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "SNN_NO_STDP",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 125.55340000000001,
+    "ticksPerSecond": 9557.686211603987,
+    "successRate": 0.025,
+    "meanTimeToSourceSeconds": 3.549999952316284,
+    "meanPathLength": 148.71786613464354,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 2.542421875,
+    "meanWeightChange": 0,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 0,
+    "timestamp": "2026-09-14T21:52:13.095Z"
+  },
+  {
+    "config": {
+      "seed": 42,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "SNN_WITH_STDP",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 150.57679999999982,
+    "ticksPerSecond": 7969.355172908452,
+    "successRate": 0,
+    "meanTimeToSourceSeconds": 0,
+    "meanPathLength": 125.64630737304688,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0.7168359375,
+    "meanWeightChange": -0.02162286690363265,
+    "potentiatedSynapses": 4,
+    "depressedSynapses": 3906,
+    "timestamp": "2026-09-14T21:52:13.252Z"
+  },
+  {
+    "config": {
+      "seed": 101,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "SNN_WITH_STDP",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 122.40079999999989,
+    "ticksPerSecond": 9803.857491127517,
+    "successRate": 0.025,
+    "meanTimeToSourceSeconds": 0.01666666753590107,
+    "meanPathLength": 120.96454429626465,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0.5884765625,
+    "meanWeightChange": -0.01952100072352158,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 3912,
+    "timestamp": "2026-09-14T21:52:13.377Z"
+  },
+  {
+    "config": {
+      "seed": 777,
+      "agentCount": 40,
+      "durationSeconds": 20,
+      "baselineMode": "SNN_WITH_STDP",
+      "enableObstacles": false
+    },
+    "totalTicks": 1200,
+    "simulationWallTimeMs": 131.7095999999999,
+    "ticksPerSecond": 9110.953187922527,
+    "successRate": 0.025,
+    "meanTimeToSourceSeconds": 3.549999952316284,
+    "meanPathLength": 126.67659912109374,
+    "totalCollisions": 0,
+    "meanSpikeRateHz": 0.8551953125,
+    "meanWeightChange": -0.02699947462158011,
+    "potentiatedSynapses": 0,
+    "depressedSynapses": 4890,
+    "timestamp": "2026-09-14T21:52:13.513Z"
+  }
+]

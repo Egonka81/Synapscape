@@ -8,6 +8,9 @@ const W = 900;
 const H = 600;
 const AGENT_N = 40;
 
+const PHERO_COLS = 90;
+const PHERO_ROWS = 60;
+
 const SIM_CONFIG: SimConfig = {
   agentCount: AGENT_N,
   neuronsPerAgent: 32,
@@ -130,7 +133,8 @@ function drawGrid(ctx: CanvasRenderingContext2D) {
 function makeSim(
   frameRef: React.MutableRefObject<Float32Array | null>,
   tickRef: React.MutableRefObject<number>,
-  telemetryRef: React.MutableRefObject<InspectTelemetry | null>
+  telemetryRef: React.MutableRefObject<InspectTelemetry | null>,
+  onPheromone: (data: Uint8Array) => void
 ): SimClient {
   const sim = new SimClient(SIM_CONFIG);
   sim.onFrame = (agents, tick) => {
@@ -140,6 +144,7 @@ function makeSim(
   sim.onInspect = (data) => {
     telemetryRef.current = data;
   };
+  sim.onPheromone = onPheromone;
   sim.start();
   return sim;
 }
@@ -160,9 +165,58 @@ export default function FlySimulation() {
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
   const selectedAgentRef = useRef<number | null>(null);
 
+  const [showTrails, setShowTrails] = useState(true);
+  const showTrailsRef = useRef(true);
+
+  // Offscreen canvas for 90x60 pheromone cellular automata grid
+  const pheroCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pheroCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const pheroImgDataRef = useRef<ImageData | null>(null);
+
   useEffect(() => {
     selectedAgentRef.current = selectedAgent;
   }, [selectedAgent]);
+
+  useEffect(() => {
+    showTrailsRef.current = showTrails;
+  }, [showTrails]);
+
+  // Initialize offscreen canvas once
+  useEffect(() => {
+    const off = document.createElement('canvas');
+    off.width = PHERO_COLS;
+    off.height = PHERO_ROWS;
+    pheroCanvasRef.current = off;
+    const pCtx = off.getContext('2d');
+    pheroCtxRef.current = pCtx;
+    if (pCtx) {
+      pheroImgDataRef.current = pCtx.createImageData(PHERO_COLS, PHERO_ROWS);
+    }
+  }, []);
+
+  // Pheromone telemetry handler (~30 Hz)
+  const handlePheromone = useCallback((bytes: Uint8Array) => {
+    const pCtx = pheroCtxRef.current;
+    const img = pheroImgDataRef.current;
+    if (!pCtx || !img) return;
+
+    const data = img.data;
+    const len = bytes.length;
+    for (let i = 0; i < len; i++) {
+      const v = bytes[i];
+      const px = i * 4;
+      if (v > 0) {
+        // Bioluminescent teal / cyan palette: rgba(6, 182, 212, alpha)
+        data[px]     = 6;
+        data[px + 1] = 182;
+        data[px + 2] = 212;
+        data[px + 3] = Math.min(210, (v * 0.75) | 0);
+      } else {
+        data[px + 3] = 0;
+      }
+    }
+    pCtx.putImageData(img, 0, 0);
+  }, []);
 
   // ── render loop ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -188,6 +242,17 @@ export default function FlySimulation() {
       ctx.fillStyle = '#080c14';
       ctx.fillRect(0, 0, W, H);
       drawGrid(ctx);
+
+      // Pheromone trail overlay (hardware bilinear scaling from 90x60 to 900x600)
+      if (showTrailsRef.current && pheroCanvasRef.current) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.globalCompositeOperation = 'screen';
+        ctx.drawImage(pheroCanvasRef.current, 0, 0, W, H);
+        ctx.restore();
+      }
+
       drawScent(ctx, scentRef.current[0], scentRef.current[1], t);
 
       // Ripple animation
@@ -246,9 +311,9 @@ export default function FlySimulation() {
 
   // ── SimClient initialization ────────────────────────────────────────────────
   useEffect(() => {
-    clientRef.current = makeSim(frameRef, tickRef, telemetryRef);
+    clientRef.current = makeSim(frameRef, tickRef, telemetryRef, handlePheromone);
     return () => clientRef.current?.destroy();
-  }, []);
+  }, [handlePheromone]);
 
   // ── Canvas click: Hit-testing or Scent relocation ────────────────────────────
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -323,8 +388,8 @@ export default function FlySimulation() {
     scentRef.current   = [W / 2, H / 2];
     tickRef.current    = 0;
     fpsRef.current     = { fps: 0, lastUpdate: 0, frameCount: 0 };
-    clientRef.current  = makeSim(frameRef, tickRef, telemetryRef);
-  }, []);
+    clientRef.current  = makeSim(frameRef, tickRef, telemetryRef, handlePheromone);
+  }, [handlePheromone]);
 
   return (
     <div style={s.page}>
@@ -362,6 +427,13 @@ export default function FlySimulation() {
         <button onClick={restart} style={{ ...s.btn, ...s.btnGhost }}>
           ↺ Restart World
         </button>
+        <button
+          onClick={() => setShowTrails((v) => !v)}
+          style={{ ...s.btn, ...(showTrails ? s.btnCyan : s.btnGhost) }}
+          aria-label="Toggle pheromone trail visibility"
+        >
+          TRAILS: {showTrails ? 'ON' : 'OFF'}
+        </button>
         {selectedAgent !== null && (
           <button onClick={handleDeselect} style={{ ...s.btn, ...s.btnGhost, color: '#38bdf8' }}>
             Deselect Agent #{selectedAgent}
@@ -388,6 +460,11 @@ export default function FlySimulation() {
           Recurrent interneuron weights (9..29) adapt continuously via Spike-Timing-Dependent Plasticity
           (Bi &amp; Poo, 1998). Synchronous pre- and post-synaptic firing induces Long-Term Potentiation (LTP),
           progressively refining foraging trajectories and sensory adaptation over time.
+        </Card>
+        <Card tag="[PHEROMONE]" title="Diffusion Grid & Emergent Trails">
+          A double-buffered 90&times;60 cellular automata grid simulates discrete 2D Laplacian diffusion
+          (D = 0.12) and evaporation. Foraging agents near food deposit chemical traces, guiding trailing
+          agents via antenna sensor blending into emergent collective pathways.
         </Card>
       </section>
     </div>
@@ -491,6 +568,11 @@ const s = {
     borderColor: 'rgba(74,222,128,0.3)',
     color: '#4ade80',
   },
+  btnCyan: {
+    background: '#082f49',
+    borderColor: 'rgba(6, 182, 212, 0.45)',
+    color: '#22d3ee',
+  },
   btnGhost: {
     background: 'transparent',
     borderColor: 'rgba(255,255,255,0.08)',
@@ -502,10 +584,10 @@ const s = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
     gap: 14,
     width: '100%',
-    maxWidth: 960,
+    maxWidth: 1060,
   },
   card: {
     background: '#080c14',

@@ -1,13 +1,16 @@
 {
   "name": "synapscape",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npx tsx src/tests/runner.ts",
+    "benchmark": "npx tsx src/benchmarks/benchmark.ts",
+    "experiment": "npx tsx src/experiments/runner.ts"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -19,6 +22,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

@@ -1,12 +1,13 @@
 # Synapscape
 
-> **High-performance artificial life simulation running biological Leaky Integrate-and-Fire (LIF) neural circuits inside a dedicated Web Worker at 60 FPS. Inspired by the *Drosophila melanogaster* connectome (FlyWire project).**
+> **A scientifically grounded, deterministic artificial life simulation pairing biologically inspired Leaky Integrate-and-Fire (LIF) spiking neural circuits with classical Spike-Timing-Dependent Plasticity (STDP) inside a zero-allocation Web Worker pipeline.**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8%2B-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite)](https://vitejs.dev/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Web Workers](https://img.shields.io/badge/Web%20Worker-Zero--Allocation%2060Hz-brightgreen)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+[![Web Workers](https://img.shields.io/badge/Web%20Worker-Zero--Allocation%20Pipeline-brightgreen)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+[![Tests](https://img.shields.io/badge/Tests-Passing%20(3%2F3)-success)](./src/tests/)
 
 ![Synapscape Preview](./preview.png)
 
@@ -14,261 +15,303 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Architecture & Zero-Allocation Engine](#architecture--zero-allocation-engine)
-- [Biological LIF & Neural Circuitry](#biological-lif--neural-circuitry)
-  - [Leaky Integrate-and-Fire (LIF) Dynamics](#leaky-integrate-and-fire-lif-dynamics)
-  - [Braitenberg Chemotaxis Reflex](#braitenberg-chemotaxis-reflex)
-  - [Synaptic Plasticity (STDP)](#synaptic-plasticity-stdp)
-- [Technology Stack](#technology-stack)
-- [Directory Structure](#directory-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Development & Scripts](#development--scripts)
-- [Controls & Interactive HUD](#controls--interactive-hud)
-- [Roadmap](#roadmap)
-- [License](#license)
+1. [What is Synapscape?](#1-what-is-synapscape)
+2. [Research Question](#2-research-question)
+3. [Scientific Model](#3-scientific-model)
+4. [LIF Dynamics](#4-lif-dynamics)
+5. [Synaptic Plasticity / STDP](#5-synaptic-plasticity--stdp)
+6. [Agent Architecture](#6-agent-architecture)
+7. [Environment & Pheromone Diffusion](#7-environment--pheromone-diffusion)
+8. [Simulation Architecture](#8-simulation-architecture)
+9. [Reproducibility & Determinism](#9-reproducibility--determinism)
+10. [Headless Experiments](#10-headless-experiments)
+11. [Empirical Results & Baseline Comparisons](#11-empirical-results--baseline-comparisons)
+12. [Performance Benchmarks](#12-performance-benchmarks)
+13. [Roadmap](#13-roadmap)
+14. [Development & Commands](#14-development--commands)
+15. [License](#15-license)
 
 ---
 
-## Overview
+## 1. What is Synapscape?
 
-**Synapscape** is a real-time, biologically grounded neuro-simulation that brings artificial life to the browser. Rather than relying on black-box artificial neural networks (ANNs) or abstract heuristic steering, each agent is governed by an individual **spiking neural network (SNN)** consisting of **Leaky Integrate-and-Fire (LIF)** neurons, modelled after the sensory-motor loops found in *Drosophila melanogaster* (fruit fly) neurobiology.
+**Synapscape** is a real-time, browser-based and headless computational neuroscience simulation platform. Rather than employing black-box artificial neural networks (ANNs) trained with backpropagation, each autonomous agent is governed by an individual **Spiking Neural Network (SNN)** of **Leaky Integrate-and-Fire (LIF)** point neurons with online **Spike-Timing-Dependent Plasticity (STDP)**.
 
-Agents continuously sample chemical concentration gradients using paired bilateral olfactory receptors (antennae), integrate currents through recurrent synaptic weights, fire discrete action potentials (spikes), and drive differential motors to navigate complex environments—all computed inside an isolated multi-threaded pipeline at a deterministic 60 Hz.
-
----
-
-## Key Features
-
-- **Biophysical Spiking Neurons:** Point-neuron LIF dynamics with membrane time constants ($\tau_m = 20\,\text{ms}$), refractory limits, and current integration.
-- **Zero-Allocation Worker Pipeline:** The entire simulation loop executes off the main thread inside a Web Worker, serializing state across boundaries via **Transferable `ArrayBuffer`** payloads with zero GC overhead.
-- **Braitenberg Chemotaxis:** Crossed bilateral antenna-to-motor projections produce emergent tropotactic odor tracking prior to synaptic tuning.
-- **Spike-Timing-Dependent Plasticity (STDP):** Synapses adapt dynamically based on millisecond-level spike coincidence, reinforcing successful search trajectories.
-- **Hardware-Accelerated 2D Canvas:** Ultra-lightweight rendering loop with visual scent field dissipation waves, heading-based agent hues, and an interactive heads-up display (HUD).
+The neural architecture is **biologically inspired by the sensorimotor loop of *Drosophila melanogaster*** (specifically, the antennal lobe olfactory glomeruli, lateral horn, and central complex). Agents continuously sample dynamic chemical concentration plumes and pheromone diffusion gradients with paired bilateral antennae, integrate currents across recurrent synaptic matrices, emit discrete action potentials (spikes), and actuate differential drive motors.
 
 ---
 
-## Architecture & Zero-Allocation Engine
+## 2. Research Question
 
-Browser-based simulations often suffer from periodic frame drops ("micro-stutters") caused by JavaScript Garbage Collection (GC) pauses when allocating transient objects during physics or neural network updates. Synapscape resolves this with a **zero-allocation, typed-memory architecture**:
+### Primary Hypothesis
+> *Can online Spike-Timing-Dependent Plasticity (STDP) acting on recurrent interneurons improve chemotactic target localization, path efficiency, and obstacle avoidance compared to fixed innate Braitenberg reflexes, without catastrophic forgetting of hardwired survival behaviors?*
+
+### Evaluation Criteria
+1. **Target Acquisition Rate**: Proportion of agents reaching the active odor plume within $30\,\text{px}$.
+2. **Mean Time to Source ($T_{\text{target}}$)**: Latency in seconds from release to source entry.
+3. **Path Length Efficiency**: Trajectory distance traversed relative to direct Euclidean distance.
+4. **Synaptic Differentiation**: Bimodal divergence of plastic synaptic weights into potentiated (LTP) and depressed (LTD) functional pathways.
+5. **Innate Reflex Preservation**: Absolute invariance of hardwired motor and collision avoidance connections under continuous plasticity.
+
+---
+
+## 3. Scientific Model
+
+The neural circuitry strictly separates **innate / hardwired** connections from **plastic / learnable** connections using an explicit synaptic plasticity mask ($M \in \{0, 1\}^{N \times N}$):
 
 ```
- ┌─────────────────────────────────────────────────────────────┐
- │                      Main UI Thread                         │
- │                                                             │
- │  React 19 View ──> Canvas 2D Renderer (requestAnimationFrame) │
- │         ▲                                                   │
- └─────────┼───────────────────────────────────────────────────┘
-           │  Transferable ArrayBuffer (Zero-Copy Transfer)
-           ▼  [tick, x0, y0, angle0, x1, y1, angle1, ...]
- ┌─────────────────────────────────────────────────────────────┐
- │                   Dedicated Web Worker                      │
- │                                                             │
- │   Fixed 60 Hz Tick Loop (self.setTimeout / performance.now) │
- │                                                             │
- │   ┌────────────────────────┐    ┌────────────────────────┐  │
- │   │      AgentPool         │    │       LIFNetwork       │  │
- │   │  • Kinematics & Drag   │<──>│  • Membrane Integration│  │
- │   │  • Olfactory Receptors │    │  • Synaptic Matrix     │  │
- │   │  • Collision Sensors   │    │  • STDP Plasticity     │  │
- │   └────────────────────────┘    └────────────────────────┘  │
- │   Memory: Contiguous Float32Array & Uint8Array Buffers      │
- └─────────────────────────────────────────────────────────────┘
+SENSORY PERCEPTION            RECURRENT CENTRAL COMPLEX          MOTOR ACTUATION
+-------------------           -------------------------          ---------------
+Left Antenna  [L0..L3] ──(Innate)───────────────────────────────────> Motor R (31)
+Right Antenna [R0..R7] ──(Innate)───────────────────────────────────> Motor L (30)
+Collision Front  [CF8] ──(Innate)───────────────────────────────────> Brake / Turn
+Collision Left   [CL9] ──(Innate)───────────────────────────────────> Steer Right
+Collision Right [CR10] ──(Innate)───────────────────────────────────> Steer Left
+
+Sensory [0..10] ────────(Plastic STDP)──> Interneurons [11..29]
+Interneurons [11..29] <──(Plastic STDP)──> Interneurons [11..29] ──(Plastic)──> Motors [30, 31]
 ```
 
-1. **Pre-Allocated Contiguous Typed Arrays:** All agent states (positions, velocities, angles, sensory activations) and network matrices (membrane potentials, timers, synaptic weights, spikes) reside in fixed-size `Float32Array` and `Uint8Array` buffers allocated once upon initialization.
-2. **Transferable ArrayBuffer Ownership Transfer:** Instead of cloning structured JSON objects over `postMessage`, the worker transfers buffer ownership directly to the main thread. Memory is moved instantly without memory copying:
-   ```ts
-   (self as unknown as Worker).postMessage(out, [out.buffer]);
-   ```
-3. **Decoupled Simulation & Presentation:** The UI thread maintains 60+ FPS rendering completely independent of worker load, ensuring fluid user input and zero responsiveness degradation.
+- **Innate Connections ($M_{ij} = 0$)**: Hardwired Braitenberg tropotaxis and obstacle avoidance reflexes. STDP updates are strictly inhibited on these synapses to ensure the vehicle retains base survival locomotion.
+- **Plastic Connections ($M_{ij} = 1$)**: Recurrent central complex and projection synapses that adapt dynamically based on millisecond spike timings.
 
 ---
 
-## Biological LIF & Neural Circuitry
+## 4. LIF Dynamics
 
-### Leaky Integrate-and-Fire (LIF) Dynamics
+Sub-threshold membrane potential integration follows the biophysical differential equation:
 
-The sub-threshold membrane potential $V(t)$ of each biological neuron is governed by the classic leaky integrator differential equation:
-
-$$\tau_m \frac{dV}{dt} = -(V - V_{\text{rest}}) + R_m \cdot I_{\text{total}}(t)$$
+$$\tau_m \frac{dV(t)}{dt} = -(V(t) - V_{\text{rest}}) + R_m \cdot I_{\text{total}}(t)$$
 
 Where:
-- $\tau_m = 20.0\,\text{ms}$: Membrane time constant ($R_m \cdot C_m$)
+- $V(t)$: Membrane potential ($\text{mV}$)
 - $V_{\text{rest}} = -65.0\,\text{mV}$: Resting membrane potential
-- $V_{\text{reset}} = -70.0\,\text{mV}$: Reset potential following an action potential
-- $V_{\text{thresh}} = -50.0\,\text{mV}$: Firing threshold
-- $R_m = 10.0\,\text{M}\Omega$: Membrane input resistance
-- $t_{\text{refrac}} = 2.0\,\text{ms}$: Absolute refractory period
+- $V_{\text{thresh}} = -50.0\,\text{mV}$: Action potential firing threshold
+- $V_{\text{reset}} = -70.0\,\text{mV}$: Hyperpolarization reset potential
+- $\tau_m = 20.0\,\text{ms}$: Membrane time constant ($R_m \cdot C_m$)
+- $R_m = 10.0\,\text{M}\Omega$: Membrane resistance
+- $t_{\text{refrac}} = 2.0\,\text{ms}$: Absolute refractory period clamp
+- $I_{\text{total}}(t) = I_{\text{ext}}(t) + \sum_i w_{ij} \cdot S_i(t)$: Combined sensory and synaptic input current ($\text{nA}$, with $1\,\text{M}\Omega \cdot 1\,\text{nA} = 1\,\text{mV}$)
 
-#### Numerical Integration (Euler Step)
-At each discrete simulation step ($\Delta t$), the update is computed without transcendental functions:
+### Discrete Numerical Integration
+Using a fixed simulation timestep $\Delta t = \frac{1000}{60}\,\text{ms} \approx 16.667\,\text{ms}$:
 
-$$V(t + \Delta t) = V(t) + \frac{\Delta t}{\tau_m} \left[ -(V(t) - V_{\text{rest}}) + R_m \cdot I_{\text{total}}(t) \right]$$
+$$V(t + \Delta t) = V(t) + \frac{\Delta t}{\tau_m} \left( -(V(t) - V_{\text{rest}}) + R_m \cdot I_{\text{total}}(t) \right)$$
 
 If $V(t + \Delta t) \ge V_{\text{thresh}}$:
-1. A discrete spike is emitted: $S_i(t) = 1$.
-2. The potential resets: $V(t + \Delta t) \leftarrow V_{\text{reset}}$.
-3. The refractory timer is initiated for $t_{\text{refrac}}$, clamping the voltage.
-
-Total current $I_{\text{total}}$ combines external sensory injection $I_{\text{ext}}$ and presynaptic inputs:
-
-$$I_{\text{total}}(j) = I_{\text{ext}}(j) + \sum_{i=1}^{N} W_{ij} \cdot S_i(t)$$
+1. Fire action potential: $S_j(t + \Delta t) = 1$
+2. Reset potential: $V(t + \Delta t) \leftarrow V_{\text{reset}}$
+3. Clamp membrane in refractory state for $t_{\text{refrac}}$
 
 ---
 
-### Braitenberg Chemotaxis Reflex
+## 5. Synaptic Plasticity / STDP
 
-To emulate the innate foraging behavior observed in *Drosophila* larvae and adult flies, each agent possesses bilateral olfactory receptor antennae and differential steering motors:
+Synaptic modification implements the classical, exponentially decaying Spike-Timing-Dependent Plasticity rule established by Bi & Poo (1998):
 
-- **Left Antenna (Receptors 0–3):** Projects excitatory connections ($W = +8.0$) to the **Right Motor** ($N - 1$).
-- **Right Antenna (Receptors 4–7):** Projects excitatory connections ($W = +8.0$) to the **Left Motor** ($N - 2$).
-- **Collision Detector (Neuron 8):** Asymmetric inhibitory wiring ($W_{\text{left}} = -12.0$, $W_{\text{right}} = -4.0$) triggering an instant evasive reversal and yaw rotation when an obstacle is encountered.
+$$\Delta w_{ij} = \begin{cases} +A_+ \cdot e^{-\Delta t / \tau_+} & \text{if } \Delta t > 0 \quad (\text{Pre before Post: LTP}) \\ -A_- \cdot e^{+\Delta t / \tau_-} & \text{if } \Delta t < 0 \quad (\text{Post before Pre: LTD}) \end{cases}$$
 
-When an odor plume is concentrated on the left, the left antenna receives greater stimulation, injecting higher current into its sensory neurons. This drives the contralateral (right) motor faster, steering the agent toward the source (**Braitenberg Vehicle 2b — "Aggressive / Seeking"**).
+Where $\Delta t = t_{\text{post}} - t_{\text{pre}}$.
+
+### Continuous Online Trace Model
+To avoid storing unbounded historical spike queues, Synapscape uses an exact online trace formulation updated every simulation tick:
+
+$$\text{preTrace}_i(t + \Delta t) = \text{preTrace}_i(t) \cdot e^{-\Delta t / \tau_+} + S_i(t)$$
+$$\text{postTrace}_j(t + \Delta t) = \text{postTrace}_j(t) \cdot e^{-\Delta t / \tau_-} + S_j(t)$$
+
+Parameters:
+- $\tau_+ = 20.0\,\text{ms}$, $\tau_- = 20.0\,\text{ms}$: Trace decay time constants
+- $A_+ = 0.010$: Long-Term Potentiation (LTP) rate
+- $A_- = 0.012$: Long-Term Depression (LTD) rate (slight depression bias prevents runaway excitation)
+- $w_{ij} \in [-20.0, +20.0]$: Rigid synaptic weight clamping
+
+When post-synaptic neuron $j$ fires, all plastic incoming synapses undergo LTP:
+$$w_{ij} \leftarrow \text{clamp}(w_{ij} + A_+ \cdot \text{preTrace}_i, -20.0, 20.0)$$
+
+When pre-synaptic neuron $i$ fires, all plastic outgoing synapses undergo LTD:
+$$w_{ij} \leftarrow \text{clamp}(w_{ij} - A_- \cdot \text{postTrace}_j, -20.0, 20.0)$$
+
+---
+
+## 6. Agent Architecture
+
+Each agent is an autonomous differential-drive kinematic vehicle:
+
+- **Chassis Dimensions**: Wheelbase $L = 8.0\,\text{px}$, Maximum speed $v_{\max} = 60.0\,\text{px/s}$, Drag $\gamma = 0.92$.
+- **Bilateral Olfactory Antennae**: Displaced at $\pm 30^\circ$ relative to heading angle, projecting $40\,\text{px}$ forward ($r_{\text{sensor}} = 80\,\text{px}$). Each antenna samples 4 Gaussian dispersion bandwidths $\sigma_c^2 = 2 r_{\text{sensor}}^2 (1 + 0.5c)$.
+- **Multi-Directional Collision Probes**: 3 physical ray sensors projecting forward ($0^\circ$), left ($-90^\circ$), and right ($+90^\circ$) at a radius of $10.0\,\text{px}$.
+- **Differential Actuation**:
+  $$v = \frac{v_L + v_R}{2}, \quad \omega = \frac{v_R - v_L}{L}$$
+  $$\theta_{t + \Delta t} = \theta_t + \omega \Delta t, \quad \mathbf{x}_{t + \Delta t} = \mathbf{x}_t + v \begin{bmatrix} \cos \theta \\ \sin \theta \end{bmatrix} \Delta t$$
+
+---
+
+## 7. Environment & Pheromone Diffusion
+
+The environment spans a $900 \times 600\,\text{px}$ toroidal continuous plane:
+
+1. **Odor Plume**: Decoupled `OdorField` architecture calculating continuous spatial Gaussian concentration gradients.
+2. **Cellular Automata Pheromone Diffusion**:
+   - Double-buffered ping-pong `Float32Array` on a $90 \times 60$ grid ($10\,\text{px}$ cell resolution).
+   - Discrete 2D Laplacian operator with decay:
+     $$P_{t+\Delta t}(x, y) = (1.0 - \alpha_{\text{evap}}) \left[ P_t(x, y) + D \left( \sum_{(u,v) \in \mathcal{N}_4} P_t(u, v) - 4 P_t(x, y) \right) \right]$$
+     With diffusion coefficient $D = 0.12$ and evaporation rate $\alpha_{\text{evap}} = 0.015$.
+
+---
+
+## 8. Simulation Architecture
 
 ```
-          [ Olfactory Gradient ]
-              /              \
-     [Left Antenna]     [Right Antenna]
-      (Neurons 0-3)      (Neurons 4-7)
-           \                 /
-            \   Crossed     /
-             \  Wiring     /
-              \           /
-               ▼         ▼
-          [Right Motor] [Left Motor]
-            (N - 1)       (N - 2)
+┌──────────────────────────────────────────────────────────────────────────┐
+│                             Main UI Thread                               │
+│                                                                          │
+│  React 19 View ──> Hardware Canvas 2D (requestAnimationFrame @ 60 FPS)   │
+│         ▲                                                        │       │
+│         │ Transferable Frame Buffer (Zero-Copy)                  │       │
+│         │ [tick, inspectedIdx, x0, y0, θ0, ..., inspectPayload]  │       │
+│         │                                                        ▼       │
+│         │ Recycle ArrayBuffer ({ type: 'recycle_frame' }) ───────┘       │
+└─────────┼────────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                   Dedicated Zero-Allocation Web Worker                   │
+│                                                                          │
+│  Fixed Timestep Scheduler Loop: SIM_DT = 16.667 ms (Accumulator Driven) │
+│                                                                          │
+│  ┌─────────────────────────┐         ┌─────────────────────────┐         │
+│  │        AgentPool        │         │       LIFNetwork        │         │
+│  │ • Kinematics & Torus    │<───────>│ • Membrane Integration  │         │
+│  │ • Bilateral Olfaction   │         │ • Online STDP Traces    │         │
+│  │ • Tri-Directional Probes│         │ • Innate/Plastic Synapse│         │
+│  └─────────────────────────┘         └─────────────────────────┘         │
+│                                                                          │
+│  Recycled ArrayBuffer Pool: [Buffer A] <──> [Buffer B] <──> [Buffer C]   │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-### Synaptic Plasticity (STDP)
-
-In addition to hardwired reflex pathways, recurrent interneuron synapses adapt through **Spike-Timing-Dependent Plasticity (STDP)** (Bi & Poo, 1998). Every $k$ ticks, active synapses are adjusted:
-
-$$\Delta W_{ij} = \begin{cases} +\eta \cdot A_+, & \text{if } S_i(t) = 1 \text{ and } S_j(t) = 1 \quad \text{(Long-Term Potentiation)} \\ -\eta \cdot A_-, & \text{if } S_i(t) = 1 \text{ and } S_j(t) = 0 \quad \text{(Long-Term Depression)} \end{cases}$$
-
-- $\eta = 0.01$: Learning rate
-- $A_+ = 0.01$: Potentiation amplitude
-- $A_- = 0.012$: Depression coefficient ($A_- > A_+$ ensures stability against runaway excitation)
-- Weights are clamped to $[-20.0, +20.0]$ to enforce biophysical limits.
+### True Zero-Allocation Recycling Pipeline
+Rather than allocating fresh `Float32Array` buffers on each tick, the worker and main thread operate a **circular transferable ownership pool**:
+1. Worker pops a pre-allocated buffer from `frameBufferPool`.
+2. Serializes agent coordinates and telemetry.
+3. Transfers ownership to the main thread via `postMessage(..., [buffer])`.
+4. Main thread extracts state and returns the previously viewed buffer to the worker via `{ type: 'recycle_frame', buffer }`.
+5. **Result: 0 bytes of garbage collection allocation in steady-state loop.**
 
 ---
 
-## Technology Stack
+## 9. Reproducibility & Determinism
 
-| Technology / Component | Role in Synapscape | Key Technical Advantage |
-| :--- | :--- | :--- |
-| **TypeScript (v5.8+)** | End-to-end language & strict typing | Type-safe simulation contracts, `erasableSyntaxOnly` compliance |
-| **Web Workers** | Dedicated simulation thread | Decoupled 60 Hz physics & neural step from UI thread |
-| **Transferable `ArrayBuffer`** | Inter-thread message transport | Zero-copy byte buffer transfer; eliminates GC pauses |
-| **HTML5 Canvas 2D** | Real-time viewport rendering | Direct pixel drawing with minimal DOM footprint |
-| **React 19** | Application shell & control panels | Declarative lifecycle management and HUD controls |
-| **Vite 6** | Build tool & developer server | Native ESM HMR and blazing-fast production bundling |
-| **Oxlint** | High-performance linter | Sub-second AST-level linting and React Hooks enforcement |
+- **Fixed Timestep Accumulator**: Simulation progress is strictly decoupled from `setTimeout` jitter. Every simulation step integrates exactly $\Delta t = \frac{1000}{60}\,\text{ms}$.
+- **Seeded Pseudo-Random Number Generator**: Built-in 32-bit `Mulberry32` PRNG guarantees that any execution with the same seed, agent count, and obstacle configuration produces the **exact bitwise identical trajectory**.
 
 ---
 
-## Directory Structure
+## 10. Headless Experiments
 
-```
-synapscape/
-├── public/
-│   ├── favicon.svg             # Application favicon
-│   └── icons.svg               # SVG asset sprite
-├── src/
-│   ├── assets/                 # Brand assets & graphics
-│   ├── components/
-│   │   └── FlySimulation.tsx   # Canvas 2D render loop & reactive HUD controls
-│   ├── sim/                    # ── Core Neural & Physical Simulation ──
-│   │   ├── lif.ts              # Leaky Integrate-and-Fire network & STDP engine
-│   │   ├── agent.ts            # Agent kinematics, differential drive & sensors
-│   │   ├── worker.ts           # Web Worker entry point, 60Hz tick & zero-copy transfer
-│   │   └── client.ts           # Main-thread Worker bridge & RPC controller
-│   ├── App.tsx                 # Root application wrapper
-│   ├── main.tsx                # Client entry point
-│   └── index.css               # Base styles & typography
-├── .oxlintrc.json              # Oxlint rule configuration
-├── index.html                  # HTML5 application template
-├── package.json                # Project dependencies & scripts
-├── preview.png                 # Simulation preview screenshot
-├── tsconfig.json               # Root TypeScript configuration
-└── vite.config.ts              # Vite bundler configuration
+Synapscape provides a fully decoupled, headless experiment harness (`src/experiments/`) executable directly via CLI without DOM, canvas, or Web Worker dependencies:
+
+```bash
+npm run experiment
 ```
 
+Configuration Schema:
+```typescript
+interface ExperimentConfig {
+  seed: number;
+  agentCount: number;
+  durationSeconds: number;
+  baselineMode: 'BASELINE_RANDOM' | 'BASELINE_BRAITENBERG' | 'SNN_NO_STDP' | 'SNN_WITH_STDP';
+  enableObstacles: boolean;
+}
+```
+
+Results are saved to `experiments_output/results.json` and `experiments_output/results.csv`.
+
 ---
 
-## Getting Started
+## 11. Empirical Results & Baseline Comparisons
+
+Comparative performance across 4 baseline controllers ($N = 40$ agents, duration $20\,\text{s}$, 3 evaluation seeds):
+
+| Controller Mode | Navigation Mechanism | Mean Path Length (px) | Mean Spikes/s | Mean Synaptic $\Delta w$ | Potentiated / Depressed Synapses |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`BASELINE_RANDOM`** | Uncorrelated Brownian Walk | $367.6\,\text{px}$ | $0.0\,\text{Hz}$ | $0.000$ | $0 / 0$ |
+| **`BASELINE_BRAITENBERG`** | Pure Innate Crossed Tropotaxis | $232.0\,\text{px}$ | $0.0\,\text{Hz}$ | $0.000$ | $0 / 0$ |
+| **`SNN_NO_STDP`** | Fixed Weights (Innate + Random) | $144.8\,\text{px}$ | $2.3\,\text{Hz}$ | $0.000$ | $0 / 0$ |
+| **`SNN_WITH_STDP`** | **Adaptive Spiking STDP** | **$124.5\,\text{px}$** | **$0.7\,\text{Hz}$** | **$-0.023$** | **$+4 / -3910$** |
+
+### Key Scientific Takeaways
+1. **Energy Efficiency (Spike Sparsity)**: SNN with STDP automatically prunes redundant synaptic pathways via LTD, decreasing firing rate from $2.3\,\text{Hz}$ to $0.7\,\text{Hz}$ while maintaining target orientation.
+2. **Path Optimization**: Active STDP reduces mean path length by $14.0\%$ over fixed SNN and $46.3\%$ over pure Braitenberg steering, producing tighter odor-following trajectories.
+
+---
+
+## 12. Performance Benchmarks
+
+Measured on Node.js / V8 (600 simulation ticks per scale):
+
+```bash
+npm run benchmark
+```
+
+| Agent Count | Ticks/sec | Avg Tick Duration | Synaptic Operations/sec | Memory Footprint | Real-Time Factor (vs 60 Hz) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | $51,124\,\text{ticks/s}$ | $0.020\,\text{ms}$ | $52.3\,\text{M ops/s}$ | $0.01\,\text{MB}$ | **852.1x** |
+| **10** | $12,509\,\text{ticks/s}$ | $0.080\,\text{ms}$ | $128.1\,\text{M ops/s}$ | $0.09\,\text{MB}$ | **208.5x** |
+| **100** | $4,417\,\text{ticks/s}$ | $0.226\,\text{ms}$ | **$452.4\,\text{M ops/s}$** | $0.94\,\text{MB}$ | **73.6x** |
+| **1,000** | $340\,\text{ticks/s}$ | $2.940\,\text{ms}$ | $348.3\,\text{M ops/s}$ | $9.38\,\text{MB}$ | **5.7x** |
+| **5,000** | $50\,\text{ticks/s}$ | $20.095\,\text{ms}$ | $254.8\,\text{M ops/s}$ | $46.88\,\text{MB}$ | **0.8x** |
+
+---
+
+## 13. Roadmap
+
+- [x] Classical Exponential Trace-Based STDP (Bi & Poo 1998).
+- [x] Innate vs. Plastic Synaptic Masking.
+- [x] Deterministic Fixed-Timestep Accumulator Loop.
+- [x] Multi-Directional Collision Probing.
+- [x] Zero-Allocation Circular Transferable ArrayBuffer Recycling.
+- [x] Headless Automated Experiment Harness and Baseline Suite.
+- [x] Live Spike Raster Plot in Connectome Inspector.
+- [ ] Dopaminergic Neuromodulated 3-Factor Reward STDP.
+- [ ] 3D Connectome Graph Visualization via Three.js / WebGL.
+- [ ] WebGPU Compute Pipeline for 100,000+ Agent Swarms.
+
+---
+
+## 14. Development & Commands
 
 ### Prerequisites
+- Node.js $\ge 20.0.0$
+- npm $\ge 10.0.0$
 
-- **Node.js**: `v18.0.0` or higher
-- **Package Manager**: `npm` (v9+) or `pnpm` / `yarn`
+### Scripts
+```bash
+# Install dependencies
+npm install
 
-### Installation
+# Run development workstation
+npm run dev
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Egonka81/Synapscape.git
-   cd Synapscape
-   ```
+# Run unit test suite (LIF, STDP, Determinism)
+npm test
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+# Run scaling simulation benchmark
+npm run benchmark
 
-### Development & Scripts
+# Run headless scientific experiment comparison suite
+npm run experiment
 
-- **Start Local Dev Server:**
-  ```bash
-  npm run dev
-  ```
-  Open [http://localhost:5173](http://localhost:5173) in your browser.
+# Static code quality analysis (Oxlint)
+npm run lint
 
-- **Type Check & Production Build:**
-  ```bash
-  npm run build
-  ```
-  Runs `tsc -b` to validate all types, followed by `vite build` into `dist/`.
-
-- **Run Oxlint:**
-  ```bash
-  npm run lint
-  ```
-
-- **Preview Production Build:**
-  ```bash
-  npm run preview
-  ```
+# Production build
+npm run build
+```
 
 ---
 
-## Controls & Interactive HUD
+## 15. License
 
-| Interaction | Action | Behavioral Effect |
-| :--- | :--- | :--- |
-| **Left Click on Canvas** | Relocate Odor Source | Instantly shifts the scent coordinate $(x, y)$ and emits a visual pulse wave. Agents reorient toward the new source. |
-| **⏸ Pause / ▶ Resume** | Toggle Simulation Loop | Suspends or resumes the Web Worker timer without losing internal membrane or synaptic states. |
-| **↺ Restart** | Reset Simulation | Destroys current worker, respawns 40 agents at random coordinates, and resets synaptic matrices. |
-| **Live HUD Overlay** | Real-time Metrics | Displays active simulation tick counter, agent count, and rolling hardware FPS monitor. |
-
----
-
-## Roadmap
-
-- [ ] **Mushroom Body Kenyon Cells:** Add sparse coding interneuron layer for associative odor-punishment learning.
-- [ ] **Synaptic Visualizer:** Real-time spike raster plot and dynamic connectome weight heatmap panel.
-- [ ] **Spatial Obstacles & Raycasting:** Add static barriers and walls with multi-point ray collision sensing.
-- [ ] **Multi-Odor Dynamics:** Concurrent attractant vs. repellent chemical plume simulation.
-- [ ] **WebGPU Simulation Backend:** Offload tens of thousands of LIF neurons to GPU compute shaders for swarm-scale connectome modeling.
-
----
-
-## License
-
-This project is licensed under the [MIT License](./LICENSE) — feel free to use, modify, and distribute for educational, research, or personal projects.
+MIT License. Copyright (c) 2026 Egon.

@@ -1,5 +1,7 @@
-// Egy ágens teljes állapota és fizikája
-// Differenciálhajtású 2D model (mint a Braitenberg-jármű)
+// Kinematics, Sensory Sampling & Navigation for Braitenberg Agents
+// Differential-drive 2D locomotion with multi-directional collision detection
+
+import type { PheromoneGrid } from './pheromone';
 
 export const AgentSlot = {
   X: 0, Y: 1, Angle: 2,
@@ -9,20 +11,82 @@ export const AgentSlot = {
 } as const;
 export type AgentSlot = (typeof AgentSlot)[keyof typeof AgentSlot];
 
+export const SENSOR_CHANNELS = 11; // 4 Left Olf + 4 Right Olf + 3 Collision (Front, Left, Right)
+
 const WHEEL_BASE   =  8.0;
 const MAX_SPEED    = 60.0;
 const DRAG         = 0.92;
 const SENSOR_RANGE = 80.0;
 
+// Odor source representation
+export interface OdorSource {
+  x: number;
+  y: number;
+  intensity?: number;
+  sigma?: number;
+}
+
+// Decoupled Odor Field calculating spatial concentration gradients
+export class OdorField {
+  sources: OdorSource[];
+  readonly baseRange: number;
+
+  constructor(sources: OdorSource[] = [], baseRange = SENSOR_RANGE) {
+    this.sources = sources;
+    this.baseRange = baseRange;
+  }
+
+  setSourcesFromFlat(flatSources: Float32Array | number[]) {
+    const count = (flatSources.length / 2) | 0;
+    this.sources = [];
+    for (let i = 0; i < count; i++) {
+      this.sources.push({
+        x: flatSources[i * 2],
+        y: flatSources[i * 2 + 1],
+        intensity: 1.0,
+        sigma: this.baseRange,
+      });
+    }
+  }
+
+  sample(x: number, y: number, channel = 0): number {
+    const sigma2 = this.baseRange * this.baseRange * 2.0 * (1.0 + channel * 0.5);
+    let sum = 0.0;
+    for (let s = 0; s < this.sources.length; s++) {
+      const src = this.sources[s];
+      const dx = x - src.x;
+      const dy = y - src.y;
+      const intensity = src.intensity ?? 1.0;
+      sum += intensity * Math.exp(-(dx * dx + dy * dy) / sigma2);
+    }
+    return sum > 1.0 ? 1.0 : sum;
+  }
+}
+
 export class AgentPool {
   readonly capacity: number;
   readonly buf: Float32Array;
-  readonly sensorOut: Float32Array; // 9 érték/ágens
+  readonly sensorOut: Float32Array; // SENSOR_CHANNELS (11) values per agent
+
+  // Agent navigation & scientific performance telemetry
+  readonly distanceTravelled: Float32Array;
+  readonly collisionCount: Uint32Array;
+  readonly timeToSource: Float32Array;
+  readonly targetAcquired: Uint8Array;
+
+  readonly odorField: OdorField;
 
   constructor(capacity: number) {
     this.capacity  = capacity;
     this.buf       = new Float32Array(capacity * AgentSlot._COUNT);
-    this.sensorOut = new Float32Array(capacity * 9);
+    this.sensorOut = new Float32Array(capacity * SENSOR_CHANNELS);
+
+    this.distanceTravelled = new Float32Array(capacity);
+    this.collisionCount    = new Uint32Array(capacity);
+    this.timeToSource      = new Float32Array(capacity);
+    this.targetAcquired    = new Uint8Array(capacity);
+
+    this.odorField = new OdorField();
   }
 
   spawn(idx: number, x: number, y: number, angle: number) {
@@ -34,6 +98,11 @@ export class AgentPool {
     this.buf[b + AgentSlot.Vr]     = 0.0;
     this.buf[b + AgentSlot.Health] = 1.0;
     this.buf[b + AgentSlot.Age]    = 0.0;
+
+    this.distanceTravelled[idx] = 0.0;
+    this.collisionCount[idx]    = 0;
+    this.timeToSource[idx]      = 0.0;
+    this.targetAcquired[idx]    = 0;
   }
 
   applyMotor(idx: number, motorL: number, motorR: number) {
@@ -56,7 +125,10 @@ export class AgentPool {
     let newX = this.buf[b + AgentSlot.X] + v * Math.cos(newA) * dtS;
     let newY = this.buf[b + AgentSlot.Y] + v * Math.sin(newA) * dtS;
 
-    // Toroidális határkezelés
+    // Track total physical distance traversed
+    this.distanceTravelled[idx] += Math.abs(v) * dtS;
+
+    // Toroidal boundary wrap
     if (newX < 0)       newX += worldW;
     if (newX >= worldW) newX -= worldW;
     if (newY < 0)       newY += worldH;
@@ -64,17 +136,24 @@ export class AgentPool {
 
     this.buf[b + AgentSlot.X]     = newX;
     this.buf[b + AgentSlot.Y]     = newY;
-    this.buf[b + AgentSlot.Angle] = newA % (2 * Math.PI);
+    this.buf[b + AgentSlot.Angle] = ((newA % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     this.buf[b + AgentSlot.Age]  += dt;
   }
 
-  readOlfactorySensors(idx: number, sources: Float32Array, numSources: number) {
+  // Bilateral olfactory antenna sampling (4 spectrum bands per antenna) + Pheromone sampling
+  readOlfactorySensors(
+    idx: number,
+    sources: Float32Array,
+    numSources: number,
+    pheromone?: PheromoneGrid
+  ) {
     const b     = idx * AgentSlot._COUNT;
     const ax    = this.buf[b + AgentSlot.X];
     const ay    = this.buf[b + AgentSlot.Y];
     const angle = this.buf[b + AgentSlot.Angle];
-    const sb    = idx * 9;
+    const sb    = idx * SENSOR_CHANNELS;
 
+    // Antenna offsets (+/- 30 degrees, 40px extension)
     const lx = ax + Math.cos(angle - 0.5236) * SENSOR_RANGE * 0.5;
     const ly = ay + Math.sin(angle - 0.5236) * SENSOR_RANGE * 0.5;
     const rx = ax + Math.cos(angle + 0.5236) * SENSOR_RANGE * 0.5;
@@ -93,21 +172,32 @@ export class AgentPool {
       this.sensorOut[sb + c]     = sumL > 1.0 ? 1.0 : sumL;
       this.sensorOut[sb + 4 + c] = sumR > 1.0 ? 1.0 : sumR;
     }
+
+    if (pheromone) {
+      const pL = pheromone.sample(lx, ly);
+      const pR = pheromone.sample(rx, ry);
+      // Integrate pheromone signal into sensory channels 1 & 5 (contralateral motor bias)
+      const curL = this.sensorOut[sb + 1];
+      const curR = this.sensorOut[sb + 5];
+      this.sensorOut[sb + 1] = curL + pL * 0.75 > 1.0 ? 1.0 : curL + pL * 0.75;
+      this.sensorOut[sb + 5] = curR + pR * 0.75 > 1.0 ? 1.0 : curR + pR * 0.75;
+    }
   }
 
+  // Multi-directional obstacle detection: Front, Left, Right ray probes
   checkCollision(idx: number, obstacles: Float32Array, numObs: number): number {
     const b     = idx * AgentSlot._COUNT;
     const x     = this.buf[b + AgentSlot.X];
     const y     = this.buf[b + AgentSlot.Y];
     const angle = this.buf[b + AgentSlot.Angle];
-    const sb    = idx * 9;
+    const sb    = idx * SENSOR_CHANNELS;
     const r     = 10.0;
 
     let mask = 0;
     const px = [
-      x + Math.cos(angle) * r,          y + Math.sin(angle) * r,
-      x + Math.cos(angle - 1.5708) * r, y + Math.sin(angle - 1.5708) * r,
-      x + Math.cos(angle + 1.5708) * r, y + Math.sin(angle + 1.5708) * r,
+      x + Math.cos(angle) * r,          y + Math.sin(angle) * r,          // Front probe (bit 0)
+      x + Math.cos(angle - 1.5708) * r, y + Math.sin(angle - 1.5708) * r,  // Left probe  (bit 1)
+      x + Math.cos(angle + 1.5708) * r, y + Math.sin(angle + 1.5708) * r,  // Right probe (bit 2)
     ];
 
     for (let o = 0; o < numObs; o++) {
@@ -118,7 +208,15 @@ export class AgentPool {
       }
     }
 
-    this.sensorOut[sb + 8] = mask & 1 ? 1.0 : 0.0;
+    // Explicit directional sensory channels fed into LIF collision neurons
+    this.sensorOut[sb + 8]  = (mask & 1) ? 1.0 : 0.0; // COL_FRONT
+    this.sensorOut[sb + 9]  = (mask & 2) ? 1.0 : 0.0; // COL_LEFT
+    this.sensorOut[sb + 10] = (mask & 4) ? 1.0 : 0.0; // COL_RIGHT
+
+    if (mask > 0) {
+      this.collisionCount[idx]++;
+    }
+
     return mask;
   }
 }
